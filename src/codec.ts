@@ -17,11 +17,20 @@
 import type { IpregistryContext, IpregistrySkipReason } from './types.js'
 
 /**
- * Version prefix of the header payload format. Bump when the encoding
- * changes so that mixed middleware/app versions fail safe (decode to null)
+ * Version prefixes of the header payload format. '1.' is plain base64url
+ * UTF-8 JSON; '2.' is base64url deflate-compressed UTF-8 JSON. Unknown
+ * prefixes decode to null so that mixed middleware/app versions fail safe
  * instead of misreading each other.
  */
-const PAYLOAD_VERSION_PREFIX = '1.'
+const PLAIN_PREFIX = '1.'
+const DEFLATE_PREFIX = '2.'
+
+/**
+ * Payloads at or below this JSON size (bytes) are not worth compressing:
+ * deflate overhead and CPU cost exceed the savings, and skip/error contexts
+ * are tiny anyway.
+ */
+const COMPRESSION_THRESHOLD = 512
 
 const SKIP_REASONS: readonly string[] = [
     'static-asset',
@@ -33,43 +42,54 @@ const SKIP_REASONS: readonly string[] = [
 
 /**
  * Encodes an `IpregistryContext` into a header-safe string: a version prefix
- * followed by the base64url-encoded UTF-8 JSON payload. Headers only carry
- * ISO-8859-1 safely, and lookup data contains arbitrary Unicode (city names,
- * currency symbols), hence the base64url encoding.
+ * followed by the base64url-encoded UTF-8 JSON payload, deflate-compressed
+ * when large enough to matter. Headers only carry ISO-8859-1 safely, and
+ * lookup data contains arbitrary Unicode (city names, currency symbols),
+ * hence the base64url encoding; compression keeps full payloads well under
+ * proxy request-header limits.
  */
-export function encodeContext(context: IpregistryContext): string {
+export async function encodeContext(
+    context: IpregistryContext,
+): Promise<string> {
     const bytes = new TextEncoder().encode(JSON.stringify(context))
 
-    let binary = ''
-    for (let i = 0; i < bytes.length; i++) {
-        binary += String.fromCharCode(bytes[i] as number)
+    if (
+        bytes.length > COMPRESSION_THRESHOLD &&
+        typeof CompressionStream === 'function'
+    ) {
+        try {
+            const deflated = await transform(
+                bytes,
+                new CompressionStream('deflate'),
+            )
+            return DEFLATE_PREFIX + toBase64Url(deflated)
+        } catch {
+            // Fall through to the uncompressed format.
+        }
     }
 
-    return (
-        PAYLOAD_VERSION_PREFIX +
-        btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
-    )
+    return PLAIN_PREFIX + toBase64Url(bytes)
 }
 
 /**
  * Decodes a header value produced by `encodeContext`. Returns null for any
  * malformed, truncated, or unknown-version value instead of throwing.
  */
-export function decodeContext(value: string): IpregistryContext | null {
-    if (!value.startsWith(PAYLOAD_VERSION_PREFIX)) {
-        return null
-    }
-
+export async function decodeContext(
+    value: string,
+): Promise<IpregistryContext | null> {
     try {
-        const base64 = value
-            .slice(PAYLOAD_VERSION_PREFIX.length)
-            .replace(/-/g, '+')
-            .replace(/_/g, '/')
-        const binary = atob(base64)
-        const bytes = new Uint8Array(binary.length)
+        let bytes: Uint8Array
 
-        for (let i = 0; i < binary.length; i++) {
-            bytes[i] = binary.charCodeAt(i)
+        if (value.startsWith(DEFLATE_PREFIX)) {
+            bytes = await transform(
+                fromBase64Url(value.slice(DEFLATE_PREFIX.length)),
+                new DecompressionStream('deflate'),
+            )
+        } else if (value.startsWith(PLAIN_PREFIX)) {
+            bytes = fromBase64Url(value.slice(PLAIN_PREFIX.length))
+        } else {
+            return null
         }
 
         const parsed: unknown = JSON.parse(new TextDecoder().decode(bytes))
@@ -113,4 +133,35 @@ export function decodeContext(value: string): IpregistryContext | null {
     } catch {
         return null
     }
+}
+
+async function transform(
+    bytes: Uint8Array,
+    stream: CompressionStream | DecompressionStream,
+): Promise<Uint8Array> {
+    const readable = new Blob([bytes as BlobPart]).stream().pipeThrough(stream)
+    return new Uint8Array(await new Response(readable).arrayBuffer())
+}
+
+function toBase64Url(bytes: Uint8Array): string {
+    let binary = ''
+    for (let i = 0; i < bytes.length; i++) {
+        binary += String.fromCharCode(bytes[i] as number)
+    }
+
+    return btoa(binary)
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/, '')
+}
+
+function fromBase64Url(value: string): Uint8Array {
+    const binary = atob(value.replace(/-/g, '+').replace(/_/g, '/'))
+    const bytes = new Uint8Array(binary.length)
+
+    for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i)
+    }
+
+    return bytes
 }

@@ -300,11 +300,11 @@ const HEADER_SIZE_WARN_THRESHOLD = 6 * 1024
 
 let warnedAboutHeaderSize = false
 
-function continueWith(
+async function continueWith(
     request: NextRequest,
     context: IpregistryContext,
-): NextResponse {
-    const encoded = encodeContext(context)
+): Promise<NextResponse> {
+    const encoded = await encodeContext(context)
 
     if (encoded.length > HEADER_SIZE_WARN_THRESHOLD && !warnedAboutHeaderSize) {
         warnedAboutHeaderSize = true

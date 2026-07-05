@@ -129,6 +129,8 @@ Everything is optional. Explicit options take precedence over environment variab
 
 > **Tip — save credits and header bytes:** always set `fields`. `'ip,location,security'` covers geo features, blocking, and GDPR detection.
 
+The context travels from the middleware to your app as a compact request header: JSON, deflate-compressed when large, base64url-encoded. A full unfiltered payload stays around 1 KB; the middleware warns once if the encoded value ever grows past 6 KB (e.g. extreme custom fields) so you can trim `fields` before hitting proxy header limits.
+
 ## Country-based redirects
 
 ```ts

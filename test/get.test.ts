@@ -7,7 +7,7 @@ import { IPREGISTRY_HEADER, type IpregistryContext } from '../src/types.js'
 import { euIpInfo } from './fixtures.js'
 
 const context: IpregistryContext = { ip: '2.2.2.2', data: euIpInfo() }
-const encoded = encodeContext(context)
+const encoded = await encodeContext(context)
 
 describe('getIpregistry', () => {
     it('reads the context from a NextRequest (route handlers)', async () => {

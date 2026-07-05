@@ -10,9 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `createIpregistryMiddleware` to enrich matched requests with Ipregistry
-  data, attached as the `x-ipregistry` request header, with configuration via
-  environment variables (`IPREGISTRY_API_KEY`, `IPREGISTRY_BASE_URL`,
-  `IPREGISTRY_TIMEOUT`, `IPREGISTRY_FIELDS`) or an explicit config object.
+  data, attached as the `x-ipregistry` request header (deflate-compressed and
+  base64url-encoded), with configuration via environment variables
+  (`IPREGISTRY_API_KEY`, `IPREGISTRY_BASE_URL`, `IPREGISTRY_TIMEOUT`,
+  `IPREGISTRY_FIELDS`) or an explicit config object.
 - `getIpregistry` to read the request context from server components, route
   handlers, server actions, and `getServerSideProps`.
 - Built-in middleware actions: `blockCountries`, `blockThreats`, and

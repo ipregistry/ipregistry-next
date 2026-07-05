@@ -76,7 +76,7 @@ export async function getIpregistry(
         return { ...NO_MIDDLEWARE }
     }
 
-    return decodeContext(value) ?? { ...NO_MIDDLEWARE }
+    return (await decodeContext(value)) ?? { ...NO_MIDDLEWARE }
 }
 
 function readHeader(source: IpregistrySource, name: string): string | null {

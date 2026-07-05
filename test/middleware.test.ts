@@ -59,7 +59,7 @@ describe('createIpregistryMiddleware', () => {
         const middleware = createIpregistryMiddleware({ client: okClient() })
         const response = await middleware(requestFor())
 
-        const context = forwardedContext(response)
+        const context = await forwardedContext(response)
         expect(context?.ip).toBe(PUBLIC_IP)
         expect(context?.data?.location?.country?.code).toBe('US')
         expect(context?.skipped).toBeUndefined()
@@ -94,7 +94,7 @@ describe('createIpregistryMiddleware', () => {
         })
 
         const response = await middleware(forged)
-        const context = forwardedContext(response)
+        const context = await forwardedContext(response)
 
         expect(context?.data?.location?.country?.code).toBe('US')
     })
@@ -107,7 +107,7 @@ describe('createIpregistryMiddleware', () => {
             }),
         )
 
-        const context = forwardedContext(response)
+        const context = await forwardedContext(response)
         expect(context?.skipped).toBe('static-asset')
         expect(context?.data).toBeNull()
     })
@@ -125,7 +125,9 @@ describe('createIpregistryMiddleware', () => {
             'https://example.com/robots.txt',
         ]) {
             const response = await middleware(requestFor(url))
-            expect(forwardedContext(response)?.skipped).toBe('static-asset')
+            expect((await forwardedContext(response))?.skipped).toBe(
+                'static-asset',
+            )
         }
 
         expect(lookupIp).not.toHaveBeenCalled()
@@ -140,7 +142,7 @@ describe('createIpregistryMiddleware', () => {
         const response = await middleware(
             requestFor('https://example.com/hero.avif'),
         )
-        expect(forwardedContext(response)?.data).not.toBeNull()
+        expect((await forwardedContext(response))?.data).not.toBeNull()
     })
 
     it('skips bots when enabled', async () => {
@@ -158,7 +160,7 @@ describe('createIpregistryMiddleware', () => {
             }),
         )
 
-        expect(forwardedContext(response)?.skipped).toBe('bot')
+        expect((await forwardedContext(response))?.skipped).toBe('bot')
         expect(lookupIp).not.toHaveBeenCalled()
     })
 
@@ -174,10 +176,10 @@ describe('createIpregistryMiddleware', () => {
                 'user-agent': 'Internal-Probe/1.0',
             }),
         )
-        expect(forwardedContext(skippedResponse)?.skipped).toBe('bot')
+        expect((await forwardedContext(skippedResponse))?.skipped).toBe('bot')
 
         const normalResponse = await middleware(requestFor())
-        expect(forwardedContext(normalResponse)?.data).not.toBeNull()
+        expect((await forwardedContext(normalResponse))?.data).not.toBeNull()
     })
 
     it('supports a custom skip predicate', async () => {
@@ -189,7 +191,7 @@ describe('createIpregistryMiddleware', () => {
         const response = await middleware(
             requestFor('https://example.com/healthz'),
         )
-        expect(forwardedContext(response)?.skipped).toBe('custom')
+        expect((await forwardedContext(response))?.skipped).toBe('custom')
     })
 
     it('skips private and missing client IPs', async () => {
@@ -208,7 +210,7 @@ describe('createIpregistryMiddleware', () => {
             const response = await middleware(
                 requestFor('https://example.com/', headers),
             )
-            expect(forwardedContext(response)?.skipped).toBe('no-ip')
+            expect((await forwardedContext(response))?.skipped).toBe('no-ip')
         }
 
         expect(lookupIp).not.toHaveBeenCalled()
@@ -225,8 +227,16 @@ describe('createIpregistryMiddleware', () => {
 
         try {
             const huge = ipInfo()
+            // High-entropy padding so the payload stays large even after
+            // the codec's deflate compression.
+            let seed = 42
+            let padding = ''
+            while (padding.length < 32 * 1024) {
+                seed = (seed * 1103515245 + 12345) % 2147483648
+                padding += seed.toString(36)
+            }
             // @ts-expect-error oversized synthetic payload
-            huge.padding = 'x'.repeat(8 * 1024)
+            huge.padding = padding
 
             const middleware = createIpregistryMiddleware({
                 client: okClient(huge),
@@ -235,7 +245,7 @@ describe('createIpregistryMiddleware', () => {
             await middleware(requestFor())
             await middleware(requestFor())
 
-            const headerWarnings = warn.mock.calls.filter(call =>
+            const headerWarnings = warn.mock.calls.filter((call) =>
                 String(call[0]).includes('request-header limits'),
             )
             expect(headerWarnings).toHaveLength(1)
@@ -254,7 +264,7 @@ describe('createIpregistryMiddleware', () => {
             requestFor('https://example.com/', { 'x-real-ip': '127.0.0.1' }),
         )
 
-        expect(forwardedContext(response)?.ip).toBe(PUBLIC_IP)
+        expect((await forwardedContext(response))?.ip).toBe(PUBLIC_IP)
     })
 
     it('fails open by default when the lookup fails', async () => {
@@ -267,7 +277,7 @@ describe('createIpregistryMiddleware', () => {
         })
 
         const response = await middleware(requestFor())
-        const context = forwardedContext(response)
+        const context = await forwardedContext(response)
 
         expect(response.status).toBe(200)
         expect(context?.data).toBeNull()
@@ -297,7 +307,7 @@ describe('createIpregistryMiddleware', () => {
         const middleware = createIpregistryMiddleware()
         const response = await middleware(requestFor())
 
-        const context = forwardedContext(response)
+        const context = await forwardedContext(response)
         expect(response.status).toBe(200)
         expect(context?.error?.code).toBe('MISSING_API_KEY')
     })
