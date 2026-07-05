@@ -1,45 +1,54 @@
+[<img src="https://cdn.ipregistry.co/icons/favicon-96x96.png" alt="Ipregistry" width="64"/>](https://ipregistry.co/)
+
 # Ipregistry Next.js Library
 
-[Ipregistry](https://ipregistry.co) is a fast, reliable IP geolocation and threat data API. This is the official **Next.js integration**, built on top of the official [`@ipregistry/client`](https://github.com/ipregistry/ipregistry-javascript) JavaScript SDK.
+[![License](http://img.shields.io/:license-apache-blue.svg)](LICENSE.txt)
+[![Actions Status](https://github.com/ipregistry/ipregistry-next/workflows/CI/badge.svg)](https://github.com/ipregistry/ipregistry-next/actions)
+[![npm](https://img.shields.io/npm/v/@ipregistry/next.svg)](https://www.npmjs.com/package/@ipregistry/next)
 
-It enriches every incoming request with Ipregistry data from `middleware.ts`, and makes that data available anywhere on the server — server components, route handlers, server actions, and `getServerSideProps` — with a single call. Works on both the Edge and Node.js runtimes, in the App Router and the Pages Router.
+This is the official Next.js integration for the [Ipregistry](https://ipregistry.co) IP geolocation and threat data API. It is built on top of the official [`@ipregistry/client`](https://github.com/ipregistry/ipregistry-javascript) JavaScript SDK.
+
+The middleware enriches every incoming request with Ipregistry data. That data is then available anywhere on the server with a single call: server components, route handlers, server actions, and `getServerSideProps`. Both the Edge and Node.js runtimes are supported, in the App Router and the Pages Router.
 
 ```
-Request ──▶ middleware (1 lookup, cached) ──▶ x-ipregistry request header ──▶ getIpregistry() anywhere
+Request -> middleware (1 lookup, cached) -> x-ipregistry request header -> getIpregistry() anywhere
 ```
 
 ## Features
 
-- **One middleware, data everywhere**: lookup once per request, read the result in any server context.
-- **Built-in caching** via the SDK's LRU cache to avoid repeated lookups (and credits) for the same IP.
-- **Country blocking, threat/proxy/Tor blocking, and country redirects** as composable, one-line actions.
-- **GDPR helper** (`isEuVisitor`) based on the API's `location.in_eu` field.
-- **Safe by default**: fails open when Ipregistry is unreachable, skips static assets, strips spoofed headers, never calls the API from the browser, never logs full IP addresses.
-- **Trusted-proxy IP extraction** presets for Vercel, Cloudflare, and Nginx, plus custom extractors.
-- **TypeScript-first**, with the official SDK's response types re-exported.
+- One middleware, data everywhere: a single lookup per request, readable from any server context.
+- Built-in caching through the SDK's LRU cache, so repeated visits from the same IP do not consume additional credits.
+- Country blocking, threat/proxy/Tor blocking, and country redirects as composable one-line actions.
+- GDPR helper (`isEuVisitor`) based on the API's `location.in_eu` field.
+- Safe by default: fails open when Ipregistry is unreachable, skips static assets, strips spoofed headers, never calls the API from the browser, and never logs full IP addresses.
+- Trusted-proxy IP extraction presets for Vercel, Cloudflare, and Nginx, plus custom extractors.
+- TypeScript-first, with the official SDK's response types re-exported.
 
-## Requirements
+## Getting started
 
-- Next.js >= 14
-- Node.js >= 20 (or the Edge runtime)
-- An [Ipregistry API key](https://dashboard.ipregistry.co)
+You need an Ipregistry API key. Sign up at [https://ipregistry.co](https://ipregistry.co) to get one along with free lookups.
 
-## Installation
+### Requirements
+
+- Next.js 14 or newer
+- Node.js 20 or newer, or the Edge runtime
+
+### Installation
 
 ```sh
 npm install @ipregistry/next
 ```
 
-## Quick start
+### Setup in three steps
 
-**1. Configure your API key** (never expose it client-side — only use `IPREGISTRY_API_KEY`, never a `NEXT_PUBLIC_` variable):
+Step 1: configure your API key. Never expose it client-side, so only use `IPREGISTRY_API_KEY` and never a `NEXT_PUBLIC_` variable:
 
 ```sh
 # .env.local
 IPREGISTRY_API_KEY=YOUR_API_KEY
 ```
 
-**2. Create the middleware:**
+Step 2: create the middleware:
 
 ```ts
 // middleware.ts (next to your app/ directory)
@@ -54,10 +63,10 @@ export const config = {
 }
 ```
 
-**3. Read the data anywhere on the server:**
+Step 3: read the data anywhere on the server:
 
 ```tsx
-// app/page.tsx — server component
+// app/page.tsx (server component)
 import { getIpregistry } from '@ipregistry/next'
 
 export default async function Page() {
@@ -68,7 +77,7 @@ export default async function Page() {
 ```
 
 ```ts
-// app/api/geo/route.ts — route handler
+// app/api/geo/route.ts (route handler)
 import { getIpregistry } from '@ipregistry/next'
 import { NextResponse, type NextRequest } from 'next/server'
 
@@ -83,7 +92,7 @@ export async function GET(request: NextRequest) {
 ```
 
 ```ts
-// Pages Router — getServerSideProps
+// Pages Router (getServerSideProps)
 import { getIpregistry } from '@ipregistry/next'
 import type { GetServerSideProps } from 'next'
 
@@ -110,26 +119,26 @@ Everything is optional. Explicit options take precedence over environment variab
 
 | Option | Environment variable | Default | Description |
 |---|---|---|---|
-| `apiKey` | `IPREGISTRY_API_KEY` | — | Your Ipregistry API key (server-side only). |
+| `apiKey` | `IPREGISTRY_API_KEY` | None | Your Ipregistry API key (server-side only). |
 | `baseUrl` | `IPREGISTRY_BASE_URL` | default endpoint | API base URL; `'eu'` selects the EU endpoint. |
 | `timeout` | `IPREGISTRY_TIMEOUT` | `3000` | Lookup timeout in milliseconds. |
 | `fields` | `IPREGISTRY_FIELDS` | full response | Comma-separated field selection, e.g. `'ip,location,security'`. |
-| `maxRetries` | — | `0` | Automatic retries. Off by default: retrying inside middleware would stall page loads. |
-| `cache` | — | `InMemoryCache` | Any SDK `IpregistryCache`, or `false` to disable. |
-| `client` | — | — | A pre-configured `IpregistryClient` (advanced/testing). |
-| `ipSource` | — | `'auto'` | Where to read the client IP from (see below). |
-| `developmentIp` | — | — | Fixed IP used when the client IP is private (localhost). |
-| `skipStaticAssets` | — | `true` | Skip `/_next/*`, favicon, and common asset extensions. |
-| `skipBots` | — | `false` | Skip crawlers: `true` (SDK heuristic) or a custom `RegExp`. |
-| `skip` | — | — | Custom predicate to skip a request. |
-| `actions` | — | `[]` | Decision hooks run after a successful lookup. |
-| `failClosed` | — | `false` | Respond 503 (or a custom status) when the lookup fails. |
-| `onError` | — | — | Callback for lookup failures (monitoring). |
-| `debug` | — | `false` | Log skips/failures with anonymized IPs. |
+| `maxRetries` | None | `0` | Automatic retries. Off by default because retrying inside middleware would stall page loads. |
+| `cache` | None | `InMemoryCache` | Any SDK `IpregistryCache`, or `false` to disable. |
+| `client` | None | None | A pre-configured `IpregistryClient` (advanced/testing). |
+| `ipSource` | None | `'auto'` | Where to read the client IP from (see below). |
+| `developmentIp` | None | None | Fixed IP used when the client IP is private (localhost). |
+| `skipStaticAssets` | None | `true` | Skip `/_next/*`, favicon, and common asset extensions. |
+| `skipBots` | None | `false` | Skip crawlers: `true` (SDK heuristic) or a custom `RegExp`. |
+| `skip` | None | None | Custom predicate to skip a request. |
+| `actions` | None | `[]` | Decision hooks run after a successful lookup. |
+| `failClosed` | None | `false` | Respond 503 (or a custom status) when the lookup fails. |
+| `onError` | None | None | Callback for lookup failures (monitoring). |
+| `debug` | None | `false` | Log skips and failures with anonymized IPs. |
 
-> **Tip — save credits and header bytes:** always set `fields`. `'ip,location,security'` covers geo features, blocking, and GDPR detection.
+> Tip: always set `fields` to save credits and header bytes. `'ip,location,security'` covers geo features, blocking, and GDPR detection.
 
-The context travels from the middleware to your app as a compact request header: JSON, deflate-compressed when large, base64url-encoded. A full unfiltered payload stays around 1 KB; the middleware warns once if the encoded value ever grows past 6 KB (e.g. extreme custom fields) so you can trim `fields` before hitting proxy header limits.
+The context travels from the middleware to your app as a compact request header: JSON, deflate-compressed when large, base64url-encoded. A full unfiltered payload stays around 1 KB. The middleware warns once if the encoded value ever grows past 6 KB so you can trim `fields` before hitting proxy header limits.
 
 ## Country-based redirects
 
@@ -153,7 +162,7 @@ export const middleware = createIpregistryMiddleware({
 })
 ```
 
-Redirects are loop-safe: a visitor already under `/fr` (or already on `example.de`) is not redirected again. The default status is 307; pass `status: 308` for permanent redirects.
+Redirects are loop-safe: a visitor already under `/fr` (or already on `example.de`) is not redirected again. The default status is 307. Pass `status: 308` for permanent redirects.
 
 ## Blocking countries
 
@@ -171,7 +180,7 @@ export const middleware = createIpregistryMiddleware({
 })
 ```
 
-Options: `mode: 'allow'` turns the list into an allowlist, `unknown: 'block'` also blocks visitors whose country could not be determined (default is fail-open), and `response` lets you return a custom page.
+Options: `mode: 'allow'` turns the list into an allowlist, `unknown: 'block'` also blocks visitors whose country could not be determined (the default is fail-open), and `response` lets you return a custom page.
 
 ## Blocking proxies, Tor, and threats
 
@@ -206,9 +215,9 @@ export const middleware = createIpregistryMiddleware({
 })
 ```
 
-Actions run in order after a successful lookup; the first one returning a `Response` wins. They never run when the lookup was skipped or failed (fail-open).
+Actions run in order after a successful lookup, and the first one returning a `Response` wins. They never run when the lookup was skipped or failed (fail-open).
 
-## GDPR / EU detection
+## GDPR and EU detection
 
 ```tsx
 import { getIpregistry, isEuVisitor } from '@ipregistry/next'
@@ -225,7 +234,7 @@ export default async function Layout({ children }) {
 }
 ```
 
-`isEuVisitor` uses the API's `location.in_eu` field. When the data is missing it returns `false`; pass `{ assumeEu: true }` to default to showing consent UIs instead:
+`isEuVisitor` uses the API's `location.in_eu` field. When the data is missing it returns `false`. Pass `{ assumeEu: true }` to default to showing consent UIs instead:
 
 ```ts
 isEuVisitor(context, { assumeEu: true })
@@ -233,7 +242,7 @@ isEuVisitor(context, { assumeEu: true })
 
 ## Caching
 
-Lookups are cached by default with the SDK's `InMemoryCache` (LRU, 2048 entries, 10-minute expiry), scoped to the runtime instance — repeated requests from the same IP consume a single credit until expiry. Plug any store by implementing the SDK's `IpregistryCache` interface:
+Lookups are cached by default with the SDK's `InMemoryCache` (LRU, 2048 entries, 10-minute expiry), scoped to the runtime instance. Repeated requests from the same IP consume a single credit until expiry. Plug any store by implementing the SDK's `IpregistryCache` interface:
 
 ```ts
 import type { IpregistryCache } from '@ipregistry/client'
@@ -273,7 +282,7 @@ createIpregistryMiddleware({
 })
 ```
 
-The default (`'auto'`) reads `x-real-ip`, then the first `x-forwarded-for` entry — correct on Vercel, Cloudflare, and any well-configured reverse proxy. Extracted values are validated; ports, IPv6 brackets, and zone IDs are stripped; private/reserved addresses are never sent to the API.
+The default (`'auto'`) reads `x-real-ip`, then the first `x-forwarded-for` entry. This is correct on Vercel, Cloudflare, and any well-configured reverse proxy. Extracted values are validated; ports, IPv6 brackets, and zone IDs are stripped; private and reserved addresses are never sent to the API.
 
 On localhost your IP is private, so no lookup happens. To exercise geo features in development:
 
@@ -285,7 +294,7 @@ createIpregistryMiddleware({
 
 ## Saving credits on bots and static assets
 
-Static assets (`/_next/*`, favicon, images, fonts, ...) are always skipped by default. Search bots are skipped opt-in:
+Static assets (`/_next/*`, favicon, images, fonts, and similar) are always skipped by default. Search bots are skipped opt-in:
 
 ```ts
 createIpregistryMiddleware({
@@ -297,11 +306,11 @@ createIpregistryMiddleware({
 })
 ```
 
-Your `matcher` in `middleware.ts` remains the primary filter — the built-in skips are a safety net.
+Your `matcher` in `middleware.ts` remains the primary filter. The built-in skips are a safety net.
 
 ## Error handling
 
-The middleware **fails open by default**: if Ipregistry is unreachable, the request times out, the API key is missing/invalid, or the response is malformed, the request continues normally with `data: null` and an `error` on the context — users are never blocked by an outage. No exception ever escapes into your request pipeline, and full IP addresses are never logged.
+The middleware fails open by default. If Ipregistry is unreachable, the request times out, the API key is missing or invalid, or the response is malformed, the request continues normally with `data: null` and an `error` on the context. Users are never blocked by an outage, no exception ever escapes into your request pipeline, and full IP addresses are never logged.
 
 ```ts
 const context = await getIpregistry()
@@ -334,7 +343,7 @@ const withIpregistry = createIpregistryMiddleware({ fields: 'ip,location' })
 export async function middleware(request: NextRequest) {
     const response = await withIpregistry(request)
 
-    // Blocked or redirected by an action? stop here.
+    // Blocked or redirected by an action? Stop here.
     if (response.status !== 200 || response.headers.has('location')) {
         return response
     }
@@ -345,20 +354,30 @@ export async function middleware(request: NextRequest) {
 }
 ```
 
-## Public API
+## API reference
 
 From `@ipregistry/next`:
 
-- `getIpregistry(source?)` — read the request's Ipregistry context (no argument in server components/actions; pass the request/headers elsewhere).
-- `isEuVisitor(input, options?)` — GDPR/EU check from `location.in_eu`.
-- `isThreat(input, options?)` — threat check from `security.is_*`.
-- `isBot(input)` — bot check from a user agent string, request, or parsed SDK `UserAgent`.
-- `IPREGISTRY_HEADER`, plus the `IpregistryContext` and re-exported SDK types (`IpInfo`, `Location`, `Security`, ...).
+| Export | Description |
+|---|---|
+| `getIpregistry(source?)` | Reads the request's Ipregistry context. Call without arguments in server components and server actions; pass the request or headers elsewhere. Never throws, never calls the API. |
+| `isEuVisitor(input, options?)` | Returns true when the visitor is in the European Union, based on `location.in_eu`. Accepts an `IpInfo` or an `IpregistryContext`. |
+| `isThreat(input, options?)` | Returns true when the IP is flagged by `security.is_threat`, `is_attacker`, or `is_abuser`. Proxy, Tor, VPN, and relay signals are opt-in through the options. |
+| `isBot(input)` | Returns true for bot user agents. Accepts a user agent string, a request, or a parsed SDK `UserAgent`. |
+| `IPREGISTRY_HEADER` | The request header name (`x-ipregistry`) used to carry the context. |
 
-From `@ipregistry/next/middleware` (everything above, plus):
+Types: `IpregistryContext`, `IpregistryLookupContext`, `IpregistrySkipReason`, `IpregistryErrorInfo`, `ThreatOptions`, plus the SDK's `IpInfo`, `Location`, `Security`, `Connection`, `Company`, `Carrier`, `Currency`, `TimeZone`, and `UserAgent`.
 
-- `createIpregistryMiddleware(config)` — the middleware factory.
-- `blockCountries(options)` / `blockThreats(options)` / `redirectByCountry(options)` — built-in actions.
+From `@ipregistry/next/middleware` (includes everything above, plus):
+
+| Export | Description |
+|---|---|
+| `createIpregistryMiddleware(config)` | Creates the middleware that performs the lookup and attaches the context to the request. |
+| `blockCountries(options)` | Action that blocks (or exclusively allows) visitors by ISO 3166-1 country code. |
+| `blockThreats(options)` | Action that blocks visitors flagged by Ipregistry security data. |
+| `redirectByCountry(options)` | Action that redirects visitors to country-specific paths or domains, loop-safe. |
+
+Types: `IpregistryMiddlewareConfig`, `IpregistryAction`, `BlockCountriesOptions`, `BlockThreatsOptions`, `RedirectByCountryOptions`, `IpSource`, `IpExtractor`, `TrustedProxyPreset`.
 
 ## Examples
 
@@ -366,14 +385,14 @@ Complete minimal setups live in [`examples/app-router`](./examples/app-router) a
 
 ## Migrating from `@ipregistry/client`
 
-See [MIGRATION.md](./MIGRATION.md). In short: keep the SDK for batch/ASN/user-agent lookups and background jobs; use this package to enrich request handling — it removes the client wiring, IP extraction, caching, and error-handling boilerplate from your Next.js code.
+See [MIGRATION.md](./MIGRATION.md). In short: keep the SDK for batch, ASN, and user-agent lookups and for background jobs; use this package to enrich request handling. It removes the client wiring, IP extraction, caching, and error-handling boilerplate from your Next.js code.
 
-## Documentation & support
+## Other resources
 
-- API documentation: https://ipregistry.co/docs
-- Issues: https://github.com/ipregistry/ipregistry-next/issues
+- [API documentation](https://ipregistry.co/docs)
+- [Issue tracker](https://github.com/ipregistry/ipregistry-next/issues)
 - Email: support@ipregistry.co
 
 ## License
 
-Apache License 2.0 — see [LICENSE.txt](./LICENSE.txt).
+Apache License 2.0. See [LICENSE.txt](./LICENSE.txt).

@@ -5,8 +5,8 @@ The same middleware works unchanged with the Pages Router; read the data in
 
 Files:
 
-- `middleware.ts` — enriches requests with location data.
-- `pages/index.tsx` — reads the data in `getServerSideProps`.
+- `middleware.ts`: enriches requests with location data.
+- `pages/index.tsx`: reads the data in `getServerSideProps`.
 
 Setup inside a real app:
 

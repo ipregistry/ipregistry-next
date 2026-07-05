@@ -38,7 +38,7 @@ Problems this leaves you with: no IP validation or trusted-proxy handling, priva
 ## After
 
 ```ts
-// middleware.ts — one lookup per request, cached, validated, fail-open
+// middleware.ts: one lookup per request, cached, validated, fail-open
 import { createIpregistryMiddleware } from '@ipregistry/next/middleware'
 
 export const middleware = createIpregistryMiddleware({
@@ -79,4 +79,4 @@ export async function GET(request: NextRequest) {
 - `parseUserAgents`
 - Any lookup not tied to the current visitor (cron jobs, imports, data pipelines)
 
-The SDK is a dependency of `@ipregistry/next`, so you can import both from the same install, and all response types (`IpInfo`, `Security`, `Location`, ...) are the SDK's own — data returned by `getIpregistry` is type-compatible with everything you already wrote against the SDK.
+The SDK is a dependency of `@ipregistry/next`, so you can import both from the same install, and all response types (`IpInfo`, `Security`, `Location`, ...) are the SDK's own, so data returned by `getIpregistry` is type-compatible with everything you already wrote against the SDK.
