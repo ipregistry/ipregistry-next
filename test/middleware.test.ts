@@ -214,6 +214,36 @@ describe('createIpregistryMiddleware', () => {
         expect(lookupIp).not.toHaveBeenCalled()
     })
 
+    it('rejects an invalid developmentIp at configuration time', () => {
+        expect(() =>
+            createIpregistryMiddleware({ developmentIp: 'not-an-ip' }),
+        ).toThrow(/developmentIp/)
+    })
+
+    it('warns once when the encoded payload risks header limits', async () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+        try {
+            const huge = ipInfo()
+            // @ts-expect-error oversized synthetic payload
+            huge.padding = 'x'.repeat(8 * 1024)
+
+            const middleware = createIpregistryMiddleware({
+                client: okClient(huge),
+            })
+
+            await middleware(requestFor())
+            await middleware(requestFor())
+
+            const headerWarnings = warn.mock.calls.filter(call =>
+                String(call[0]).includes('request-header limits'),
+            )
+            expect(headerWarnings).toHaveLength(1)
+        } finally {
+            warn.mockRestore()
+        }
+    })
+
     it('uses the development IP fallback for private addresses', async () => {
         const middleware = createIpregistryMiddleware({
             client: okClient(),

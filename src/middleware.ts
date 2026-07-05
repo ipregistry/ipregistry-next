@@ -28,6 +28,7 @@ import {
     anonymizeIp,
     createIpExtractor,
     isPrivateIp,
+    isValidIp,
     type IpSource,
 } from './ip.js'
 import {
@@ -158,6 +159,13 @@ function isStaticAssetPath(pathname: string): boolean {
 export function createIpregistryMiddleware(
     config: IpregistryMiddlewareConfig = {},
 ): (request: NextRequest) => Promise<NextResponse | Response> {
+    if (config.developmentIp && !isValidIp(config.developmentIp)) {
+        throw new TypeError(
+            `[ipregistry] developmentIp '${config.developmentIp}' is not a ` +
+                'valid IP address.',
+        )
+    }
+
     const extractIp = createIpExtractor(config.ipSource)
     const fields = config.fields ?? process.env.IPREGISTRY_FIELDS
     const actions = config.actions ?? []
@@ -283,13 +291,34 @@ function resolveSkipReason(
  * header. Any incoming `x-ipregistry` header is always discarded first so
  * clients can never spoof lookup data.
  */
+/**
+ * Proxies and servers commonly cap total request header size around 8-16 KB;
+ * warn (once) well below that so full unfiltered payloads get noticed before
+ * they cause hard-to-diagnose 431/400 responses in production.
+ */
+const HEADER_SIZE_WARN_THRESHOLD = 6 * 1024
+
+let warnedAboutHeaderSize = false
+
 function continueWith(
     request: NextRequest,
     context: IpregistryContext,
 ): NextResponse {
+    const encoded = encodeContext(context)
+
+    if (encoded.length > HEADER_SIZE_WARN_THRESHOLD && !warnedAboutHeaderSize) {
+        warnedAboutHeaderSize = true
+        console.warn(
+            `[ipregistry] the encoded lookup payload is ${encoded.length} ` +
+                'bytes, which may exceed proxy request-header limits when ' +
+                "combined with cookies. Set the 'fields' option (e.g. " +
+                "'ip,location,security') to shrink it.",
+        )
+    }
+
     const headers = new Headers(request.headers)
     headers.delete(IPREGISTRY_HEADER)
-    headers.set(IPREGISTRY_HEADER, encodeContext(context))
+    headers.set(IPREGISTRY_HEADER, encoded)
 
     return NextResponse.next({ request: { headers } })
 }
