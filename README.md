@@ -119,22 +119,22 @@ Everything is optional. Explicit options take precedence over environment variab
 
 | Option | Environment variable | Default | Description |
 |---|---|---|---|
+| `actions` | None | `[]` | Decision hooks run after a successful lookup. |
 | `apiKey` | `IPREGISTRY_API_KEY` | None | Your Ipregistry API key (server-side only). |
 | `baseUrl` | `IPREGISTRY_BASE_URL` | default endpoint | API base URL; `'eu'` selects the EU endpoint. |
-| `timeout` | `IPREGISTRY_TIMEOUT` | `3000` | Lookup timeout in milliseconds. |
-| `fields` | `IPREGISTRY_FIELDS` | full response | Comma-separated field selection, e.g. `'ip,location,security'`. |
-| `maxRetries` | None | `0` | Automatic retries. Off by default because retrying inside middleware would stall page loads. |
 | `cache` | None | `InMemoryCache` | Any SDK `IpregistryCache`, or `false` to disable. |
 | `client` | None | None | A pre-configured `IpregistryClient` (advanced/testing). |
-| `ipSource` | None | `'auto'` | Where to read the client IP from (see below). |
-| `developmentIp` | None | None | Fixed IP used when the client IP is private (localhost). |
-| `skipStaticAssets` | None | `true` | Skip `/_next/*`, favicon, and common asset extensions. |
-| `skipBots` | None | `false` | Skip crawlers: `true` (SDK heuristic) or a custom `RegExp`. |
-| `skip` | None | None | Custom predicate to skip a request. |
-| `actions` | None | `[]` | Decision hooks run after a successful lookup. |
-| `failClosed` | None | `false` | Respond 503 (or a custom status) when the lookup fails. |
-| `onError` | None | None | Callback for lookup failures (monitoring). |
 | `debug` | None | `false` | Log skips and failures with anonymized IPs. |
+| `developmentIp` | None | None | Fixed IP used when the client IP is private (localhost). |
+| `failClosed` | None | `false` | Respond 503 (or a custom status) when the lookup fails. |
+| `fields` | `IPREGISTRY_FIELDS` | full response | Comma-separated field selection, e.g. `'ip,location,security'`. |
+| `ipSource` | None | `'auto'` | Where to read the client IP from (see below). |
+| `maxRetries` | None | `0` | Automatic retries. Off by default because retrying inside middleware would stall page loads. |
+| `onError` | None | None | Callback for lookup failures (monitoring). |
+| `skip` | None | None | Custom predicate to skip a request. |
+| `skipBots` | None | `false` | Skip crawlers: `true` (SDK heuristic) or a custom `RegExp`. |
+| `skipStaticAssets` | None | `true` | Skip `/_next/*`, favicon, and common asset extensions. |
+| `timeout` | `IPREGISTRY_TIMEOUT` | `3000` | Lookup timeout in milliseconds. |
 
 > Tip: always set `fields` to save credits and header bytes. `'ip,location,security'` covers geo features, blocking, and GDPR detection.
 
