@@ -136,7 +136,7 @@ Everything is optional. Explicit options take precedence over environment variab
 | `skipStaticAssets` | None | `true` | Skip `/_next/*`, favicon, and common asset extensions. |
 | `timeout` | `IPREGISTRY_TIMEOUT` | `3000` | Lookup timeout in milliseconds. |
 
-> Tip: always set `fields` to save credits and header bytes. `'ip,location,security'` covers geo features, blocking, and GDPR detection.
+> Tip: set `fields` to fetch only what you use, keeping lookups fast and the request header small. `'ip,location,security'` covers geo features, blocking, and GDPR detection.
 
 The context travels from the middleware to your app as a compact request header: JSON, deflate-compressed when large, base64url-encoded. A full unfiltered payload stays around 1 KB. The middleware warns once if the encoded value ever grows past 6 KB so you can trim `fields` before hitting proxy header limits.
 
